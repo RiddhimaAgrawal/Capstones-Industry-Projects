@@ -1,0 +1,39 @@
+digraph G {
+  rankdir=LR; fontname="Helvetica"; nodesep=0.45; ranksep=0.7; bgcolor="white";
+  node [fontname="Helvetica", fontsize=12, shape=box, style="rounded,filled", fillcolor="#E8F1FB", color="#2B5C8A"];
+  edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+  dev   [label="Developer\n(browser / curl / SDK)", fillcolor="#FFF4D6", color="#B8860B"];
+  stripe[label="Stripe\n(test mode)", fillcolor="#EFE3FF", color="#6B3FA0"];
+  hook  [label="Customer webhook\nURL", fillcolor="#FFF4D6", color="#B8860B"];
+
+  subgraph cluster_api { label="FastAPI service"; style="rounded"; color="#2B5C8A";
+    portal [label="/portal + /docs\n(developer portal)"];
+    acct   [label="Account, Keys,\nUsage, Webhook routes\n(JWT auth)"];
+    guard  [label="api_key_guard\n1. hash + lookup key\n2. token bucket\n3. monthly quota", fillcolor="#D5F0DC", color="#2E7D45"];
+    prod   [label="/v1/analyze/*\n(text analysis)"];
+    mw     [label="Metering + Prometheus\nmiddleware"];
+    bill   [label="/v1/billing/*\n+ stripe-webhook"];
+  }
+
+  redis [label="Redis\n- rate-limit buckets (Lua)\n- monthly quota counters\n- usage event list", shape=cylinder, fillcolor="#FADBD8", color="#B03A2E"];
+  pg    [label="PostgreSQL\ncustomers, api_keys,\nusage_daily, webhooks", shape=cylinder, fillcolor="#D6EAF8", color="#1F618D"];
+
+  subgraph cluster_cel { label="Celery"; style="rounded"; color="#7D6608";
+    beat   [label="beat\n(every 15 s)"];
+    agg    [label="aggregate_usage"];
+    deliver[label="deliver_webhook\n(signed, retries)"];
+  }
+  prom [label="Prometheus\n/metrics", fillcolor="#FDEBD0", color="#CA6F1E"];
+
+  dev -> portal; dev -> acct [label="JWT"]; dev -> guard [label="X-API-Key"];
+  guard -> prod; guard -> redis [label="bucket + quota"]; guard -> pg [label="key lookup"];
+  prod -> mw; mw -> redis [label="RPUSH event"];
+  acct -> pg; acct -> deliver [label="emit event"];
+  guard -> deliver [label="quota.warning /\nquota.exceeded"];
+  bill -> stripe [dir=both, label="Checkout / Portal"]; stripe -> bill [label="signed webhook", style=dashed];
+  bill -> pg [label="set plan"];
+  beat -> agg; agg -> redis [label="LPOP batch"]; agg -> pg [label="upsert rollups"];
+  deliver -> hook [label="HMAC-signed POST"]; deliver -> pg [label="delivery log"];
+  prom -> mw [label="scrape", dir=back];
+}

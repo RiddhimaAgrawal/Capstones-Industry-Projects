@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Developer Portal</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --fg:#e2e8f0; --mute:#94a3b8; --accent:#38bdf8; --ok:#4ade80; --err:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+  header { padding:20px 24px; border-bottom:1px solid #334155; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; } header a { color:var(--accent); text-decoration:none; }
+  main { max-width:900px; margin:0 auto; padding:24px; display:grid; gap:20px; }
+  section { background:var(--card); border-radius:12px; padding:20px; }
+  h2 { margin:0 0 12px; font-size:16px; }
+  input, button { font:inherit; padding:9px 12px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:var(--fg); }
+  button { background:var(--accent); color:#0f172a; border:0; cursor:pointer; font-weight:600; }
+  button.ghost { background:transparent; color:var(--err); border:1px solid var(--err); padding:4px 10px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  pre { background:#0b1220; padding:12px; border-radius:8px; overflow:auto; font-size:13px; }
+  table { width:100%; border-collapse:collapse; } td,th { text-align:left; padding:6px 8px; border-bottom:1px solid #334155; }
+  .bar { height:10px; background:#334155; border-radius:6px; overflow:hidden; } .bar > div { height:100%; background:var(--ok); }
+  .mute { color:var(--mute); } .hidden { display:none; } .err { color:var(--err); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Developer Portal</h1>
+  <a href="/docs">Interactive API docs (Swagger)</a>
+  <a href="/redoc">ReDoc</a>
+  <a href="/openapi.json">openapi.json</a>
+  <span id="who" class="mute" style="margin-left:auto"></span>
+</header>
+<main>
+  <section id="auth">
+    <h2>1. Sign up / log in</h2>
+    <div class="row">
+      <input id="email" type="email" placeholder="email">
+      <input id="password" type="password" placeholder="password (min 8)">
+      <button onclick="authenticate('register')">Sign up</button>
+      <button onclick="authenticate('login')">Log in</button>
+    </div>
+    <div id="authMsg" class="err"></div>
+  </section>
+
+  <div id="app" class="hidden" style="display:grid;gap:20px">
+    <section>
+      <h2>2. Plan &amp; usage</h2>
+      <div id="plan"></div>
+      <div class="bar" style="margin:10px 0"><div id="usageBar" style="width:0"></div></div>
+      <div class="row">
+        <button onclick="upgrade()">Upgrade to Pro (Stripe test mode)</button>
+        <button onclick="refresh()" style="background:#475569;color:#e2e8f0">Refresh</button>
+      </div>
+      <div id="billMsg" class="mute"></div>
+    </section>
+
+    <section>
+      <h2>3. API keys</h2>
+      <div class="row"><input id="keyName" placeholder="key name e.g. production"><button onclick="createKey()">Create key</button></div>
+      <pre id="newKey" class="hidden"></pre>
+      <table><thead><tr><th>Name</th><th>Prefix</th><th>Last used</th><th></th></tr></thead><tbody id="keys"></tbody></table>
+    </section>
+
+    <section>
+      <h2>4. Try it</h2>
+      <div class="row"><input id="tryKey" placeholder="paste your API key" style="flex:1"></div>
+      <div class="row"><input id="tryText" value="This movie was absolutely wonderful, I loved every minute!" style="flex:1"><button onclick="tryIt()">Analyze sentiment</button></div>
+      <pre id="tryOut">response appears here</pre>
+      <p class="mute">curl equivalent:</p>
+      <pre>curl -X POST $HOST/v1/analyze/sentiment \
+  -H "X-API-Key: apk_..." -H "Content-Type: application/json" \
+  -d '{"text":"I loved it"}'</pre>
+    </section>
+
+    <section>
+      <h2>5. Daily usage (aggregated by Celery)</h2>
+      <table><thead><tr><th>Day</th><th>Endpoint</th><th>Requests</th><th>Errors</th><th>429s</th><th>Avg ms</th></tr></thead><tbody id="usage"></tbody></table>
+    </section>
+  </div>
+</main>
+<script>
+let token = localStorage.getItem("token") || "";
+const $ = id => document.getElementById(id);
+const api = async (path, opts = {}) => {
+  const r = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...(opts.headers || {}) } });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || r.statusText);
+  return body;
+};
+async function authenticate(kind) {
+  try {
+    const out = await api("/v1/auth/" + kind, { method: "POST", body: JSON.stringify({ email: $("email").value, password: $("password").value }) });
+    token = out.access_token; localStorage.setItem("token", token); $("authMsg").textContent = ""; refresh();
+  } catch (e) { $("authMsg").textContent = e.message; }
+}
+async function refresh() {
+  if (!token) return;
+  try {
+    const a = await api("/v1/account");
+    $("app").classList.remove("hidden"); $("who").textContent = a.email;
+    $("plan").innerHTML = `Plan <b>${a.plan}</b> &middot; ${a.limits.rate_per_sec} req/s sustained, burst ${a.limits.burst} &middot; ${a.usage_this_month} / ${a.limits.monthly_quota} calls this month`;
+    $("usageBar").style.width = Math.min(100, a.usage_this_month / a.limits.monthly_quota * 100) + "%";
+    const ks = await api("/v1/keys");
+    $("keys").innerHTML = ks.map(k => `<tr><td>${k.name}</td><td><code>${k.prefix}…</code></td><td>${k.last_used_at || "—"}</td><td>${k.revoked ? "<span class=mute>revoked</span>" : `<button class=ghost onclick="revoke(${k.id})">Revoke</button>`}</td></tr>`).join("");
+    const u = await api("/v1/usage");
+    $("usage").innerHTML = u.rows.map(r => `<tr><td>${r.day}</td><td>${r.endpoint}</td><td>${r.requests}</td><td>${r.errors}</td><td>${r.rate_limited}</td><td>${r.avg_latency_ms}</td></tr>`).join("") || "<tr><td colspan=6 class=mute>No usage yet</td></tr>";
+  } catch (e) { token = ""; localStorage.removeItem("token"); $("app").classList.add("hidden"); }
+}
+async function createKey() {
+  try {
+    const k = await api("/v1/keys", { method: "POST", body: JSON.stringify({ name: $("keyName").value || "default" }) });
+    $("newKey").classList.remove("hidden"); $("newKey").textContent = "Copy now — shown once:\n" + k.api_key; $("tryKey").value = k.api_key; refresh();
+  } catch (e) { alert(e.message); }
+}
+async function revoke(id) { await api("/v1/keys/" + id, { method: "DELETE" }); refresh(); }
+async function upgrade() {
+  try { const o = await api("/v1/billing/checkout", { method: "POST" }); location.href = o.checkout_url; }
+  catch (e) { $("billMsg").textContent = e.message; }
+}
+async function tryIt() {
+  const r = await fetch("/v1/analyze/sentiment", { method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": $("tryKey").value }, body: JSON.stringify({ text: $("tryText").value }) });
+  const hdr = ["X-RateLimit-Remaining", "X-Quota-Remaining", "Retry-After"].map(h => r.headers.get(h) ? `${h}: ${r.headers.get(h)}` : "").filter(Boolean).join("\n");
+  $("tryOut").textContent = `HTTP ${r.status}\n${hdr}\n\n` + JSON.stringify(await r.json(), null, 2);
+  setTimeout(refresh, 1500);
+}
+refresh();
+</script>
+</body>
+</html>
