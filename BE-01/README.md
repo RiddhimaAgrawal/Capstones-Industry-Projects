@@ -18,13 +18,13 @@ Backend track project. Stack: **Spring Boot 3.5 (Java 21), PostgreSQL 16, Flyway
 
 | Deliverable from the brief | Where |
 |---|---|
-| Working demo | run it with [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md); `scripts/demo.sh` plays the whole story. Screen-recording plan: [docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md) |
+| Working demo | run it with [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md); `scripts/demo.sh` plays the whole story. Screen-recording : [docs/VIDEO_SCRIPT.md](https://drive.google.com/file/d/1BpDibbOXhw2qfQi-EIvboPomEFde6hlQ/view?usp=drive_link) |
 | GitHub repository, README, setup instructions | this repository |
 | Architecture diagram, data and API documentation | [docs/architecture.png](docs/architecture.png), [docs/er-diagram.png](docs/er-diagram.png), [docs/transfer-sequence.png](docs/transfer-sequence.png), [docs/CODE_WALKTHROUGH.md](docs/CODE_WALKTHROUGH.md), live OpenAPI at `/swagger-ui.html` |
 | Test results and numbers | [Tests and results](#tests-and-results) below, `verification/` |
 | 10-minute presentation | [presentation/Digital_Banking_Core.pptx](presentation/Digital_Banking_Core.pptx) (12 slides; source `presentation/build_deck.js`) |
-| Explainer video | [video/Digital_Banking_Core_explainer.mp4](video/Digital_Banking_Core_explainer.mp4) (captioned slides, no voice) and the narration script in [docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md). Add your own recorded link here: `<VIDEO LINK>` |
-| Individual reflection | write your own in `docs/REFLECTION.md` (what you learned, what you owned) |
+| Explainer video | [video/Digital_Banking_Core_explainer.mp4](https://drive.google.com/file/d/1BpDibbOXhw2qfQi-EIvboPomEFde6hlQ/view?usp=drive_link)  |
+| Individual reflection |`docs/REFLECTION.md` 
 
 ## Architecture
 
@@ -143,7 +143,7 @@ src/test/java/                      integration + concurrency tests
 keycloak/bank-realm.json            realm, roles, demo users
 scripts/                            get-token.sh, demo.sh
 verification/                       DB-level concurrency check + saved output
-docs/                               setup guide, code walkthrough, diagrams, video script
+docs/                               setup guide, code walkthrough, diagrams
 presentation/                       the PowerPoint deck and the script that builds it
-video/                              narration, captioned explainer video and its build script
+video/                              narration, explainer video and its build script
 ```
