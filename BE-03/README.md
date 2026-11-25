@@ -6,6 +6,8 @@ The sample product is a **Text Analysis API** (sentiment, stats, keywords).
 
 ![architecture](docs/architecture.png)
 
+**Demo video:** [Working demo of the API platform (Google Drive)](https://drive.google.com/file/d/14mUuv1cWv1p-Avvd3ypR3qK1du_-REYI/view?usp=drive_link)
+
 ## Features (mapped to the milestones)
 
 | # | Milestone | Where |
@@ -31,8 +33,8 @@ The sample product is a **Text Analysis API** (sentiment, stats, keywords).
 
 ### 2. Get the code
 ```bash
-git clone <your-repo-url>
-cd <repo>/BE-03
+git clone https://github.com/RiddhimaAgrawal/Capstones-Industry-Projects.git
+cd Capstones-Industry-Projects/BE-03
 cp .env.example .env        # Windows PowerShell: copy .env.example .env
 ```
 
@@ -90,8 +92,7 @@ With the API running: `./scripts/generate_sdks.sh` → `sdks/python` and `sdks/t
   * All 200 metered events aggregated into `usage_daily` correctly (`requests=200, rate_limited=189`).
   * Throughput ≈ 85–90 req/s with p50 ≈ 200 ms **under 20-way client concurrency on a laptop-class box** — this is a
     sandbox figure, not a capacity claim. Re-run `scripts/load_test.py` on your machine/Postgres for your own numbers.
-* **Sentiment accuracy:** not claimed. Run `scripts/eval_sentiment.py` on IMDB/Sentiment140 and paste your result here:
-  `accuracy = ____ on ____ samples`.
+* **Sentiment accuracy:** not measured. `scripts/eval_sentiment.py` can evaluate it on IMDB or Sentiment140; no accuracy is claimed here.
 
 ## Design decisions & trade-offs
 * **Token bucket in Lua** → atomic across many API workers; gives burst + sustained rate.
@@ -108,6 +109,6 @@ BE-03/
   app/            FastAPI app (routers/, models, plans, ratelimit, metering, tasks, webhooks, metrics, static/portal.html)
   tests/          pytest suite
   scripts/        load_test.py, eval_sentiment.py, generate_sdks.sh
-  docs/           architecture.png/.dot, EXPLANATION.md, VIDEO_SCRIPT.md
+  docs/           architecture.png/.dot, EXPLANATION.md, VIDEO_SCRIPT.md, REFLECTION.md, screenshots/
   docker-compose.yml  Dockerfile  prometheus.yml  .env.example
 ```
